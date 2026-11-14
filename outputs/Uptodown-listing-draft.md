@@ -7,7 +7,7 @@ Prepared for the Uptodown Developers Console. Do not publish until a production-
 - App name: Milk tally
 - Platform: Android
 - Package: com.milktally.app
-- Current app version: 1.6 (versionCode 7)
+- Current app version: 1.8 (versionCode 9)
 - Minimum Android version: Android 6.0 / API 23
 - Category suggestion: Tools
 - Language: English
@@ -29,9 +29,9 @@ Milk tally makes it easy to calculate the total for everyday milk and dairy purc
 
 The app shares product quantities and online price data through Firebase Firestore. If users submit a suggestion or support message, the message and any optional contact detail they enter are stored for the app owner. No sign-in is required for the main tally.
 
-## Version 1.6 release notes
+## Version 1.8 release notes
 
-Removed the prefilled owner email from the admin screen and APK. Owner access is authorized by a verified Firebase Auth UID. Improved manual quantity entry, kept Reset accessible while typing, and added Firestore price refresh.
+Admins can update prices directly, approve product suggestions, and mark support messages as read before deleting them. The Android app now shows a native confirmation dialog so the delete action works reliably in WebView.
 
 ## Distribution and license
 
@@ -44,6 +44,6 @@ Removed the prefilled owner email from the admin screen and APK. Owner access is
 
 ## Release file warning
 
-outputs/Milk-tally.apk is now release-signed, non-debuggable, and ready for the Uptodown upload. Keep the signing key for future updates.
+outputs/Milk-tally.apk is release-signed, non-debuggable, and ready for the Uptodown upload. Keep the signing key for future updates.
 
 

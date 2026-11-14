@@ -1,9 +1,10 @@
 # Milk tally — project handoff
 
 **Last updated:** 2026-11-15  
-**Current Android source version:** 1.7 (`versionCode` 8)
+**Current Android source version:** 1.8 (`versionCode` 9)
 **Android package:** `com.milktally.app`
 
+**v1.8 — Reliable support deletion:** Added a native Android confirmation dialog so the WebView delete action can continue to Firestore.
 **v1.7 — Owner price controls & support cleanup:** Admin can edit approved prices directly, mark support messages read, then delete them.
 
 This document is the developer handoff for the Android app and its Firebase project. It records the implemented behavior, cloud schema, build steps, configuration locations, security status, and setup still required for the owner admin panel.
@@ -13,12 +14,12 @@ This document is the developer handoff for the Android app and its Firebase proj
 | Area | Current status |
 |---|---|
 | Android app | Native Android shell with local WebView assets; app content is HTML/CSS/JavaScript. |
-| Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.7 build (`versionCode` 8). The APK is included in this private repository; signing credentials remain local. |
+| Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.8 build (`versionCode` 9). The APK is included in this repository; signing credentials remain local. |
 | Cloud project | Firebase project `milk-tally`, Spark plan, no billing account attached. |
 | Active app backend | Cloud Firestore is the only active Google backend in the currently deployed app. |
 | Firestore | Standard edition, database `(default)`, region `asia-south1` (Mumbai). Seven product documents plus shared tally and submission collections. |
 | Main tally login | None. App users do not need an account. |
-| Owner admin panel | `admin.html` uses Firebase Email/Password Auth with in-memory-only sessions. It can directly update product prices, approve/reject suggestions, and mark support messages read before deleting them. The owner account is verified and login was confirmed working. The updated Firestore rules need publishing for support read/delete actions. |
+| Owner admin panel | `admin.html` uses Firebase Email/Password Auth with in-memory-only sessions. It can directly update product prices, approve/reject suggestions, and mark support messages read before deleting them. The owner account is verified and login was confirmed working. Published Firestore rules permit the verified owner to set `readAt` and delete only read messages. |
 | Firebase Hosting | `firebase.json` and `public/` are configured for Hosting, but a live Hosting deployment is not confirmed. Spark blocks `.apk` uploads to Firebase Hosting. |
 | Google Cloud Run / Functions / Storage | Not used by the app. |
 | WhatsApp | No WhatsApp API is used. The Android share sheet opens and the user chooses WhatsApp, recipient, and Send. |
@@ -70,6 +71,7 @@ There is no SQL-style connection string or database username/password. The web S
 - Suggestion form creates pending price-change or new-product records. The owner panel can approve/reject them or update prices directly.
 - Support form stores the message and optional contact text in Firestore. It does not email anyone.
 - The owner panel can mark a support message as read and then delete it. Firestore rules require the verified owner and a `readAt` timestamp before deletion.
+- Android handles the panel's JavaScript delete confirmation with a native dialog so the WebView does not silently cancel the action.
 - No sign-in is required for the normal tally.
 
 The local fallback and seed prices now use ₹82 for Amul Gold 1 L, matching the last confirmed live Firestore value. Firestore remains the source of truth when online. Check the live `products/gold1l` document before reseeding production.
@@ -149,7 +151,7 @@ The previously published rules allow the verified Firebase Auth UID of the owner
 2. The owner account has been created in Firebase Authentication. Verify the account using its email before signing in; the app requires `emailVerified == true`.
 3. The owner UID has been entered in `cloud/firestore.rules`. The owner's email and password are not stored in the source or APK.
 4. In Authentication > Settings > Authorized domains, add `appassets.androidplatform.net` if required for email verification links or sign-in inside the Android app's bundled WebView. If you later use another web host, add its hostname too.
-5. The existing UID-specific rules were published to Firebase. Publish the latest `cloud/firestore.rules` after this source update so owner message read/delete works.
+5. The UID-specific rules are published to Firebase. The current support rule lets the verified owner mark a message read and then delete it.
 6. Verify the owner email, then open **Admin**, enter the owner email and password privately, and review the inbox. The form clears the credentials after sign-in.
 
 Email/Password is enabled, the Firebase owner account exists, and the owner confirmed admin login works. The app has no user registration screen and no password is embedded.
@@ -163,7 +165,7 @@ Email/Password is enabled, the Firebase owner account exists, and the owner conf
 - Bill sharing is exposed through the `MilkTallyAndroid.shareBill()` JavaScript bridge and Android `Intent.ACTION_SEND` chooser.
 - Package: `com.milktally.app`; label: **Milk tally**.
 - Gradle: wrapper 8.9; Android Gradle plugin; compile SDK 35, min SDK 23, target SDK 35; `androidx.webkit:webkit:1.12.1`.
-- The v1.7 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
+- The v1.8 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
 
 ## Project layout
 
