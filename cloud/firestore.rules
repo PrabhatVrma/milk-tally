@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner() {
+      return request.auth != null
+        && request.auth.uid == 'fX0XFElxKiSc0fDF4MZ4eAWEQxs1'
+        && request.auth.token.email_verified == true;
+    }
+    function validPriceRequest() {
+      return request.resource.data.keys().hasOnly(['type','productId','suggestedPrice','note','status','createdAt'])
+        && request.resource.data.type == 'price_change'
+        && request.resource.data.productId is string
+        && request.resource.data.productId.size() <= 40
+        && request.resource.data.suggestedPrice is number
+        && request.resource.data.suggestedPrice >= 0
+        && request.resource.data.suggestedPrice <= 100000
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+    }
+    function validNewProductRequest() {
+      return request.resource.data.keys().hasOnly(['type','name','kind','suggestedPrice','note','status','createdAt'])
+        && request.resource.data.type == 'new_product'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 5
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.name.matches('Amul .*')
+        && request.resource.data.kind is string
+        && request.resource.data.kind.size() >= 1
+        && request.resource.data.kind.size() <= 60
+        && request.resource.data.suggestedPrice is number
+        && request.resource.data.suggestedPrice >= 0
+        && request.resource.data.suggestedPrice <= 100000
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+    }
+    match /products/{productId} {
+      allow read: if true;
+      // Product writes are restricted to the verified owner account.
+      allow create, update, delete: if isOwner();
+    }
+    match /sharedData/current {
+      allow read: if true;
+      // No account is required; visitors can change only the shared tally.
+      allow create: if request.resource.data.keys().hasOnly(['quantities','updatedAt'])
+        && request.resource.data.quantities is map
+        && request.resource.data.quantities.size() <= 100
+        && request.resource.data.updatedAt == request.time;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantities','updatedAt'])
+        && request.resource.data.quantities is map
+        && request.resource.data.quantities.size() <= 100
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+    match /changeRequests/{requestId} {
+      allow create: if validPriceRequest() || validNewProductRequest();
+      allow read, update: if isOwner();
+      allow delete: if false;
+    }
+    match /supportMessages/{messageId} {
+      allow create: if request.resource.data.keys().hasOnly(['message','contact','createdAt'])
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 3
+        && request.resource.data.message.size() <= 1200
+        && request.resource.data.contact is string
+        && request.resource.data.contact.size() <= 160
+        && request.resource.data.createdAt == request.time;
+      allow read: if isOwner();
+      allow update, delete: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

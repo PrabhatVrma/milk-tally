@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.milktally.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.milktally.app'
+        minSdk 23
+        targetSdk 35
+        versionCode 7
+        versionName '1.6'
+    }
+    signingConfigs {
+        release {
+            def keyPath = System.getenv('MILK_TALLY_KEYSTORE')
+            if (keyPath) {
+                storeFile file(keyPath)
+                storePassword System.getenv('MILK_TALLY_STORE_PASSWORD')
+                keyAlias System.getenv('MILK_TALLY_KEY_ALIAS')
+                keyPassword System.getenv('MILK_TALLY_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            debuggable false
+            minifyEnabled false
+            if (System.getenv('MILK_TALLY_KEYSTORE')) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
