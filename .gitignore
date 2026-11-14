@@ -5,6 +5,7 @@
 local.properties
 *.apk
 *.aab
+!outputs/Milk-tally.apk
 
 # Local Android signing material and encrypted local secrets
 *.jks

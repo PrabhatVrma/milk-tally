@@ -13,7 +13,7 @@ This document is the developer handoff for the Android app and its Firebase proj
 | Area | Current status |
 |---|---|
 | Android app | Native Android shell with local WebView assets; app content is HTML/CSS/JavaScript. |
-| Latest APK artifact | `outputs/Milk-tally.apk` is the last packaged build (version 1.6 / code 7). Source is now version 1.7 / code 8 and needs a new APK build before distribution. |
+| Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.7 build (`versionCode` 8). The APK is included in this private repository; signing credentials remain local. |
 | Cloud project | Firebase project `milk-tally`, Spark plan, no billing account attached. |
 | Active app backend | Cloud Firestore is the only active Google backend in the currently deployed app. |
 | Firestore | Standard edition, database `(default)`, region `asia-south1` (Mumbai). Seven product documents plus shared tally and submission collections. |
@@ -163,7 +163,7 @@ Email/Password is enabled, the Firebase owner account exists, and the owner conf
 - Bill sharing is exposed through the `MilkTallyAndroid.shareBill()` JavaScript bridge and Android `Intent.ACTION_SEND` chooser.
 - Package: `com.milktally.app`; label: **Milk tally**.
 - Gradle: wrapper 8.9; Android Gradle plugin; compile SDK 35, min SDK 23, target SDK 35; `androidx.webkit:webkit:1.12.1`.
-- The last packaged v1.6 APK is release-signed and has `debuggable=false`; the v1.7 source changes require a rebuild for installation. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
+- The v1.7 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
 
 ## Project layout
 
