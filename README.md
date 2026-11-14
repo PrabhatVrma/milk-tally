@@ -18,6 +18,7 @@ This document is the developer handoff for the Android app and its Firebase proj
 | Android app | Native Android shell with local WebView assets; app content is HTML/CSS/JavaScript. |
 | Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.8 build (`versionCode` 9). The APK is included in this repository; signing credentials remain local. |
 | Cloud project | Firebase project `milk-tally`, Spark plan, no billing account attached. |
+| Source repository | [Public GitHub repository](https://github.com/PrabhatVrma/milk-tally) with source, documentation, scripts, and release APK. |
 | Active app backend | Cloud Firestore is the only active Google backend in the currently deployed app. |
 | Firestore | Standard edition, database `(default)`, region `asia-south1` (Mumbai). Seven product documents plus shared tally and submission collections. |
 | Main tally login | None. App users do not need an account. |
