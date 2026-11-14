@@ -69,7 +69,11 @@ service cloud.firestore {
         && request.resource.data.contact.size() <= 160
         && request.resource.data.createdAt == request.time;
       allow read: if isOwner();
-      allow update, delete: if false;
+      // The owner can explicitly mark a message as read before deleting it.
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
+        && request.resource.data.readAt == request.time;
+      allow delete: if isOwner() && resource.data.readAt is timestamp;
     }
     match /{document=**} { allow read, write: if false; }
   }

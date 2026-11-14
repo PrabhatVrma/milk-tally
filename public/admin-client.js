@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendEmailVerification, inMemoryPersistence, setPersistence } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { getFirestore, collection, getDocs, doc, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, doc, runTransaction, serverTimestamp, updateDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 const config=window.MILK_TALLY_FIREBASE_CONFIG;
 const loginView=document.getElementById('loginView');
@@ -11,6 +11,7 @@ const loginButton=document.getElementById('loginButton');
 const verifyButton=document.getElementById('sendVerification');
 const loginForm=document.getElementById('loginForm');
 const requestsRoot=document.getElementById('requestList');
+const productsRoot=document.getElementById('productList');
 const supportRoot=document.getElementById('supportList');
 const toastEl=document.getElementById('toast');
 let auth=null,db=null,toastTimer=0,authReady=Promise.resolve();
@@ -65,10 +66,31 @@ requestsRoot.addEventListener('click',async event=>{
   try{await reviewRequest(button.dataset.id,button.dataset.action==='approve');showToast(button.dataset.action==='approve'?'Suggestion approved.':'Suggestion rejected.');await loadInbox();}
   catch(error){showPageError(`Could not review suggestion: ${error.message}`);button.disabled=false;}
 });
+productsRoot.addEventListener('click',async event=>{
+  const button=event.target.closest('button[data-product-id]');if(!button)return;
+  const card=button.closest('.item'),input=card?.querySelector('input[data-price]');
+  const rawPrice=input?.value.trim(),price=Number(rawPrice);
+  if(!rawPrice||!Number.isFinite(price)||price<0||price>100000){showPageError('Enter a price from ₹0 to ₹100,000.');input?.focus();return;}
+  button.disabled=true;clearPageError();
+  try{await updateDoc(doc(db,'products',button.dataset.productId),{price});showToast('Product price updated.');await loadInbox();}
+  catch(error){showPageError(`Could not update price: ${error.message}`);button.disabled=false;}
+});
+supportRoot.addEventListener('click',async event=>{
+  const button=event.target.closest('button[data-support-action]');if(!button)return;
+  const messageId=button.dataset.id,action=button.dataset.supportAction;
+  if(action==='delete'&&!window.confirm('Delete this support message? This cannot be undone.'))return;
+  button.disabled=true;clearPageError();
+  try{
+    const messageRef=doc(db,'supportMessages',messageId);
+    if(action==='read'){await updateDoc(messageRef,{readAt:serverTimestamp()});showToast('Message marked as read.');}
+    else if(action==='delete'){await deleteDoc(messageRef);showToast('Support message deleted.');}
+    await loadInbox();
+  }catch(error){showPageError(`Could not ${action==='delete'?'delete':'mark'} message: ${error.message}`);button.disabled=false;}
+});
 
 async function loadInbox(){
   if(!db||!auth?.currentUser)return;
-  clearPageError();requestsRoot.innerHTML='<div class="empty">Loading requests…</div>';supportRoot.innerHTML='<div class="empty">Loading messages…</div>';
+  clearPageError();productsRoot.innerHTML='<div class="empty">Loading products…</div>';requestsRoot.innerHTML='<div class="empty">Loading requests…</div>';supportRoot.innerHTML='<div class="empty">Loading messages…</div>';
   try{
     const [requestSnapshot,supportSnapshot,productSnapshot]=await Promise.all([
       getDocs(collection(db,'changeRequests')),
@@ -78,11 +100,16 @@ async function loadInbox(){
     const products=new Map(productSnapshot.docs.map(item=>[item.id,{id:item.id,...item.data()}]));
     const requests=requestSnapshot.docs.map(item=>({id:item.id,...item.data()})).filter(item=>item.status==='pending').sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
     const messages=supportSnapshot.docs.map(item=>({id:item.id,...item.data()})).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+    renderProducts([...products.values()].sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0)));
     renderRequests(requests,products);renderSupport(messages);
   }catch(error){
-    emptyList(requestsRoot,'Requests are unavailable.');emptyList(supportRoot,'Support messages are unavailable.');
+    emptyList(productsRoot,'Products are unavailable.');emptyList(requestsRoot,'Requests are unavailable.');emptyList(supportRoot,'Support messages are unavailable.');
     showPageError(`Could not read the admin inbox. The Email/Password provider and owner-only Firestore rules must be enabled and published. ${error.message}`);
   }
+}
+function renderProducts(products){
+  if(!products.length){emptyList(productsRoot,'No products are available.');return;}
+  productsRoot.innerHTML=products.map((product,index)=>`<article class="item"><div class="itemtop"><div><h3>${escapeHtml(product.name||product.id)}</h3><div class="meta">${escapeHtml(product.kind||'')} · ID ${escapeHtml(product.id)}</div></div><span class="pill">${escapeHtml(money(product.price))}</span></div><div class="price-edit"><label for="product-price-${index}">Price (₹)</label><input id="product-price-${index}" data-price type="number" min="0" max="100000" step="0.01" inputmode="decimal" value="${escapeHtml(product.price??'')}"><button class="primary" type="button" data-product-id="${escapeHtml(product.id)}">Save price</button></div></article>`).join('');
 }
 function renderRequests(requests,products){
   if(!requests.length){emptyList(requestsRoot,'No pending suggestions.');return;}
@@ -98,7 +125,13 @@ function renderRequests(requests,products){
 function renderSupport(messages){
   document.getElementById('supportCount').textContent=`${messages.length} total`;
   if(!messages.length){emptyList(supportRoot,'No support messages yet.');return;}
-  supportRoot.innerHTML=messages.map(message=>`<article class="item"><div class="meta">${escapeHtml(dateLabel(message.createdAt))}</div><div class="messagebody">${escapeHtml(message.message)}</div>${message.contact?`<div class="contact">Contact: ${escapeHtml(message.contact)}</div>`:''}</article>`).join('');
+  supportRoot.innerHTML=messages.map(message=>{
+    const read=Boolean(message.readAt);
+    const action=read
+      ?`<button class="secondary delete-message" type="button" data-support-action="delete" data-id="${escapeHtml(message.id)}">Delete message</button>`
+      :`<button class="secondary" type="button" data-support-action="read" data-id="${escapeHtml(message.id)}">Mark as read</button>`;
+    return `<article class="item"><div class="itemtop"><div class="meta">Received ${escapeHtml(dateLabel(message.createdAt))}</div>${read?'<span class="pill read-pill">Read</span>':'<span class="pill unread-pill">Unread</span>'}</div><div class="messagebody">${escapeHtml(message.message)}</div>${message.contact?`<div class="contact">Contact: ${escapeHtml(message.contact)}</div>`:''}<div class="actions">${action}</div></article>`;
+  }).join('');
 }
 async function reviewRequest(requestId,approve){
   const requestRef=doc(db,'changeRequests',requestId);

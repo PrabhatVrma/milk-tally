@@ -1,8 +1,10 @@
 # Milk tally — project handoff
 
 **Last updated:** 2026-11-15  
-**Current Android version:** 1.6 (`versionCode` 7)  
+**Current Android source version:** 1.7 (`versionCode` 8)
 **Android package:** `com.milktally.app`
+
+**v1.7 — Owner price controls & support cleanup:** Admin can edit approved prices directly, mark support messages read, then delete them.
 
 This document is the developer handoff for the Android app and its Firebase project. It records the implemented behavior, cloud schema, build steps, configuration locations, security status, and setup still required for the owner admin panel.
 
@@ -11,12 +13,12 @@ This document is the developer handoff for the Android app and its Firebase proj
 | Area | Current status |
 |---|---|
 | Android app | Native Android shell with local WebView assets; app content is HTML/CSS/JavaScript. |
-| Latest APK | `outputs/Milk-tally.apk`; release-signed and non-debuggable; version 1.6 / code 7. |
+| Latest APK artifact | `outputs/Milk-tally.apk` is the last packaged build (version 1.6 / code 7). Source is now version 1.7 / code 8 and needs a new APK build before distribution. |
 | Cloud project | Firebase project `milk-tally`, Spark plan, no billing account attached. |
 | Active app backend | Cloud Firestore is the only active Google backend in the currently deployed app. |
 | Firestore | Standard edition, database `(default)`, region `asia-south1` (Mumbai). Seven product documents plus shared tally and submission collections. |
 | Main tally login | None. App users do not need an account. |
-| Owner admin panel | `admin.html` is bundled in version 1.6. It uses Firebase Email/Password Auth with in-memory-only sessions. The login email is not prefilled, echoed after login, or embedded in the APK. Email/Password is enabled, the owner account exists, and UID-specific owner rules are published. The account email must be verified before the inbox can load. |
+| Owner admin panel | `admin.html` uses Firebase Email/Password Auth with in-memory-only sessions. It can directly update product prices, approve/reject suggestions, and mark support messages read before deleting them. The owner account is verified and login was confirmed working. The updated Firestore rules need publishing for support read/delete actions. |
 | Firebase Hosting | `firebase.json` and `public/` are configured for Hosting, but a live Hosting deployment is not confirmed. Spark blocks `.apk` uploads to Firebase Hosting. |
 | Google Cloud Run / Functions / Storage | Not used by the app. |
 | WhatsApp | No WhatsApp API is used. The Android share sheet opens and the user chooses WhatsApp, recipient, and Send. |
@@ -33,7 +35,7 @@ This document is the developer handoff for the Android app and its Firebase proj
 
 Firebase Authentication, Firebase Storage, Realtime Database, Cloud Functions, Cloud Run, Cloud Messaging, Firebase Hosting as a live website, and a custom REST API are not used by the currently deployed tally app. The Firebase config contains a `storageBucket` value because Firebase provides it in the web-app config; no Storage SDK is imported and no object is stored there.
 
-The owner panel source adds Firebase Email/Password Authentication, which is a separate Firebase service but is no-cost on Spark for non-phone authentication. It is not active until the provider is enabled in the Firebase Console. Real phone OTP is not included; Firebase phone SMS requires billing and is charged per SMS. See [Firebase pricing](https://firebase.google.com/pricing) and [Spark plan details](https://firebase.google.com/docs/projects/billing/firebase-pricing-plans).
+Firebase Email/Password Authentication is used only by the owner panel. Real phone OTP is not included; Firebase phone SMS requires billing and is charged per SMS. See [Firebase pricing](https://firebase.google.com/pricing) and [Spark plan details](https://firebase.google.com/docs/projects/billing/firebase-pricing-plans).
 
 ## Firebase project and connection configuration
 
@@ -55,7 +57,7 @@ There is no SQL-style connection string or database username/password. The web S
 
 - `firebase-config.js` contains the Firebase Web app config, including `apiKey`. That API key is a **public client identifier**, not an admin credential; it is compiled into the app by design. Access control is enforced by Firestore rules.
 - No Firebase service-account private key, admin password, OAuth client secret, refresh token, or production signing key is used by the app or stored in this repository.
-- The admin email is entered only in the login form and is not saved in source or displayed after sign-in. The form clears both fields on submit, and Auth is configured not to persist the login across page loads. Firestore rules authorize a verified owner UID; replace the UID placeholder after creating the Auth account. The Firebase Authentication password is not set or stored here; the owner must create it privately in Firebase Authentication.
+- The admin email is entered only in the login form and is not saved in source or displayed after sign-in. The form clears both fields on submit, and Auth is configured not to persist the login across page loads. Firestore rules authorize the verified owner UID. The Firebase Authentication password is not stored here.
 - Never place a service-account JSON file, user password, or Android release-signing password in the repo. If a future backend needs a service account, store it outside the APK and use a managed secret store or environment-protected CI secret.
 
 ## Current app behavior
@@ -65,8 +67,9 @@ There is no SQL-style connection string or database username/password. The web S
 - Quantity can be changed with plus/minus buttons or entered directly (0–9999). Zero is displayed blank. While typing, the app updates the total locally and saves the shared tally after editing finishes.
 - The shared total panel includes Reset and Share bill. Reset clears all shared quantities. The footer compacts above the keyboard while a quantity field is being edited.
 - Share bill builds a dated INR summary and opens the Android text-share chooser. The user chooses WhatsApp and sends the message manually.
-- Suggestion form creates pending price-change or new-product records. The owner panel can approve/reject those when Auth and rules are enabled.
+- Suggestion form creates pending price-change or new-product records. The owner panel can approve/reject them or update prices directly.
 - Support form stores the message and optional contact text in Firestore. It does not email anyone.
+- The owner panel can mark a support message as read and then delete it. Firestore rules require the verified owner and a `readAt` timestamp before deletion.
 - No sign-in is required for the normal tally.
 
 The local fallback and seed prices now use ₹82 for Amul Gold 1 L, matching the last confirmed live Firestore value. Firestore remains the source of truth when online. Check the live `products/gold1l` document before reseeding production.
@@ -132,13 +135,13 @@ contact: string (optional; empty if omitted)
 createdAt: Firestore server timestamp
 ```
 
-These messages are stored in Firestore; there is no email relay or separate support backend.
+The owner can add `readAt` when marking a message read; deletion is permitted only after this timestamp exists. These messages are stored in Firestore; there is no email relay or separate support backend.
 
 ## Security rules and approval status
 
 Current rules allow anyone to read products and the shared tally, update the shared tally, and create bounded suggestions/support messages. Only the verified owner UID can read submissions, approve requests, or change approved products and prices. There is no per-user rate limit, so the shared tally can be overwritten and public submission collections can be spammed.
 
-`cloud/firestore.rules` contains the owner-panel rules now published to Firebase: the verified Firebase Auth UID of the owner account can read support messages and change requests, update request statuses, and write approved product changes. Anonymous access remains limited to the public catalog/shared tally and validated create-only submissions. Firebase confirmed publication; rule changes can take up to one minute to propagate.
+The previously published rules allow the verified Firebase Auth UID of the owner account to read support messages and change requests, update request statuses, and write approved product changes. This source update adds owner-only support read markers and deletion of read messages; publish the updated `cloud/firestore.rules` before using those controls. Anonymous access remains limited to the public catalog/shared tally and validated create-only submissions.
 
 ### Owner setup required
 
@@ -146,10 +149,10 @@ Current rules allow anyone to read products and the shared tally, update the sha
 2. The owner account has been created in Firebase Authentication. Verify the account using its email before signing in; the app requires `emailVerified == true`.
 3. The owner UID has been entered in `cloud/firestore.rules`. The owner's email and password are not stored in the source or APK.
 4. In Authentication > Settings > Authorized domains, add `appassets.androidplatform.net` if required for email verification links or sign-in inside the Android app's bundled WebView. If you later use another web host, add its hostname too.
-5. The UID-specific rules have been published to Firebase. Firebase confirmed publication; allow up to one minute for propagation.
+5. The existing UID-specific rules were published to Firebase. Publish the latest `cloud/firestore.rules` after this source update so owner message read/delete works.
 6. Verify the owner email, then open **Admin**, enter the owner email and password privately, and review the inbox. The form clears the credentials after sign-in.
 
-The user requested the admin setup. Email/Password is enabled, the Firebase owner account exists, and UID-specific rules have been published. Email verification remains pending. The app has no user registration screen and no password is embedded.
+Email/Password is enabled, the Firebase owner account exists, and the owner confirmed admin login works. The app has no user registration screen and no password is embedded.
 
 ## Android implementation
 
@@ -160,7 +163,7 @@ The user requested the admin setup. Email/Password is enabled, the Firebase owne
 - Bill sharing is exposed through the `MilkTallyAndroid.shareBill()` JavaScript bridge and Android `Intent.ACTION_SEND` chooser.
 - Package: `com.milktally.app`; label: **Milk tally**.
 - Gradle: wrapper 8.9; Android Gradle plugin; compile SDK 35, min SDK 23, target SDK 35; `androidx.webkit:webkit:1.12.1`.
-- The v1.6 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
+- The last packaged v1.6 APK is release-signed and has `debuggable=false`; the v1.7 source changes require a rebuild for installation. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
 
 ## Project layout
 
@@ -168,12 +171,12 @@ The user requested the admin setup. Email/Password is enabled, the Firebase owne
 index.html                         Main UI and local state/quantity logic
 cloud-client.js                    Firestore listeners, refresh, submissions, tally sync
 admin.html                         Owner-only sign-in and inbox UI
-admin-client.js                    Email/password auth and Firestore approval actions
+admin-client.js                    Owner price controls, suggestion approvals, support inbox actions
 firebase-config.js                 Active public Firebase Web app config
 firebase-config.example.js         Placeholder config template
 firebase.json                      Firestore rules + Firebase Hosting source config
 .firebaserc                        Firebase CLI project alias
-cloud/firestore.rules              Current local rules (prepared owner panel rules)
+cloud/firestore.rules              Firestore rules, including owner-only read/delete controls for support
 cloud/initial-products.json        Product seed/reference data
 cloud/initial-app-data.json        Initial UI data/reference
 cloud/sync-app.ps1                 Copies source pages/config/assets to public and Android
