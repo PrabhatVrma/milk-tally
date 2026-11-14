@@ -7,6 +7,8 @@
 **v1.8 — Reliable support deletion:** Added a native Android confirmation dialog so the WebView delete action can continue to Firestore.
 **v1.7 — Owner price controls & support cleanup:** Admin can edit approved prices directly, mark support messages read, then delete them.
 
+**System design:** [Architecture diagram, runtime flows, data model, and security boundaries](docs/system-design.md).
+
 This document is the developer handoff for the Android app and its Firebase project. It records the implemented behavior, cloud schema, build steps, configuration locations, security status, and setup still required for the owner admin panel.
 
 ## Status at a glance
