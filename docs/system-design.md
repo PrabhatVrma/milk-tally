@@ -1,6 +1,6 @@
 # Milk tally — system design
 
-**Architecture revision:** v1.8  
+**Architecture revision:** v1.9
 **Android package:** `com.milktally.app`  
 **Backend plan:** Firebase Spark
 
@@ -15,9 +15,11 @@ flowchart LR
         Shell["Native Android shell<br/>Java · WebViewAssetLoader"]:::client
         UI["Bundled screens<br/>Tally · Owner admin<br/>HTML · CSS · JavaScript"]:::client
         SDK["Firebase Web SDK<br/>v12.19 · gstatic CDN"]:::sdk
+        LocalTally[("Per-install local storage<br/>Private quantities + price cache")]:::data
         Bridge["MilkTallyAndroid bridge<br/>shareBill(text)"]:::client
         Shell --> UI
         UI --> SDK
+        UI <-->|"Read and save private tally"| LocalTally
         UI --> Bridge
     end
 
@@ -25,7 +27,6 @@ flowchart LR
         Auth["Firebase Authentication<br/>Owner admin only"]:::auth
         Rules["Cloud Firestore rules<br/>Verified owner UID + public app access"]:::security
         Products[("products/{productId}<br/>Prices and catalog")]:::data
-        Tally[("sharedData/current<br/>Shared quantities")]:::data
         Requests[("changeRequests/{id}<br/>Pending suggestions")]:::data
         Support[("supportMessages/{id}<br/>Support inbox")]:::data
         SDK --> Rules
@@ -44,7 +45,7 @@ flowchart LR
 
     subgraph Delivery["Build and distribution"]
         Repo["GitHub repository<br/>Source · docs · scripts"]:::delivery
-        APK["Release APK<br/>v1.8 · signed"]:::delivery
+        APK["Release APK<br/>v1.9 · signed"]:::delivery
         Phone["Install on Android"]:::delivery
         Repo --> APK --> Phone
     end
@@ -53,7 +54,6 @@ flowchart LR
     Owner --> Shell
     Owner --> Auth
     Products -->|"Live prices"| UI
-    UI <-->|"Read and save quantities"| Tally
     UI -->|"Create suggestion"| Requests
     UI -->|"Send support message"| Support
     UI -->|"Owner edits price"| Products
@@ -76,7 +76,7 @@ The Firebase Web SDK connects from the app directly to Firestore. There is no cu
 
 | Flow | What happens |
 |---|---|
-| Tally | The app reads approved products and the shared quantity map. Quantity changes update the total immediately and sync to `sharedData/current`. |
+| Tally | Quantities are stored in local storage on each app installation. Pack controls and manual entries use the product's order multiple. No quantity data is sent to Firestore. |
 | Price refresh | Firestore price snapshots update the catalog in the app. The Refresh action can request the latest server values. |
 | Suggestions | Anyone can submit a bounded price or new-product suggestion. The owner reviews it in the admin panel and approves or rejects it. |
 | Direct price edit | The verified owner saves a price from the admin panel to `products/{productId}`; Firestore rules reject that write from anonymous users. |
@@ -89,14 +89,17 @@ The Firebase Web SDK connects from the app directly to Firestore. There is no cu
 
 Public catalog with `name`, `kind`, `price`, and optional display fields such as `order`, `image`, `badge`, `color`, and `range`.
 
-### `sharedData/current`
+### Per-installation tally
 
-One shared tally document:
+Stored only in the app installation's local storage (`milkTallyLocalV2`):
 
 ```text
 quantities: map<productId, integer>
-updatedAt: server timestamp
 ```
+
+Each install has an independent quantity map. The legacy Firestore `sharedData/current` document is ignored by the current app and denied by current rules.
+
+Current pack multiples: Gold 1 L 6, Gold 500 ml 6, Taaza 500 ml 6, Slim ’n Trim 180 ml 5, Masti Dahi 380 g 12, Masti Dahi 85 g 8, and Chaas 400 ml 6. New catalog items default to a multiple of 1 until added to the local app defaults.
 
 ### `changeRequests/{id}`
 
@@ -109,6 +112,7 @@ Anonymous users can create a message with optional contact text and server `crea
 ## Security and service boundaries
 
 - Normal tally use does not require an account. Firebase Email/Password Auth is reserved for the owner admin panel.
+- Tally quantities never leave the phone. Approved prices and owner submissions still use Firestore.
 - Rules identify the owner by Firebase Auth UID and require a verified email. The owner email and password are not embedded in the app.
 - Firebase Web app configuration is public client configuration. Do not put a Firebase service-account key, GitHub token, admin password, or Android signing key in source, docs, or the APK.
 - The app uses Firestore and Firebase Authentication. It has no Cloud Run, Cloud Functions, Cloud Storage, Realtime Database, or custom REST API dependency.
@@ -118,6 +122,6 @@ Anonymous users can create a message with optional contact text and server `crea
 
 - Android UI assets are maintained at the repository root and copied to `public/` and the Android WebView bundle by `cloud/sync-app.ps1`.
 - `cloud/build-release.ps1` builds the release APK with the local JDK, Android SDK, and keystore. Signing material stays outside the repository.
-- `outputs/Milk-tally.apk` is the installable v1.8 release artifact.
+- `outputs/Milk-tally.apk` is the installable v1.9 release artifact.
 - Firebase Hosting configuration exists in `firebase.json`; a live Hosting deployment is separate from the Android APK and is not assumed here.
 - Source control and release artifact are in the GitHub repository. GitHub is not used as a runtime dependency by the app.

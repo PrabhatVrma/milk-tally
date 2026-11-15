@@ -1,12 +1,12 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, getDocsFromServer } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, onSnapshot, collection, addDoc, serverTimestamp, getDocsFromServer } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 const config=window.MILK_TALLY_FIREBASE_CONFIG;
 const state=document.getElementById('cloudState');
 const refreshButton=document.getElementById('refreshPrices');
 const setState=(message,mode='')=>{state.textContent=message;state.className=`cloudstate ${mode}`;};
 const tally=window.milkTally;
-let db=null,cloudReady=false,gotProducts=false,gotQuantities=false,qtyTimer=0;
+let db=null;
 const toast=message=>{const el=document.getElementById('toast');el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2400);};
 
 if(!config||!config.apiKey||String(config.apiKey).startsWith('PASTE_')){
@@ -14,25 +14,15 @@ if(!config||!config.apiKey||String(config.apiKey).startsWith('PASTE_')){
 }else{
   try{
     const app=initializeApp(config);db=getFirestore(app);
-    const sharedRef=doc(db,'sharedData','current');
-    setState('Connecting to shared prices…');
+    setState('Connecting to live prices…');
     onSnapshot(collection(db,'products'),snap=>applyProducts(snap.docs.map(d=>({id:d.id,...d.data()}))),err=>{setState('Could not load approved products.','offline');console.error('Products:',err);});
-    onSnapshot(sharedRef,snap=>{
-      if(snap.exists()){
-        const remote=snap.data().quantities||{};const qty={};for(const p of tally.products)qty[p.id]=Math.max(0,Math.min(9999,Number(remote[p.id])||0));tally.data.qty=qty;tally.persist();tally.renderQuantities();
-      }else{
-        setDoc(sharedRef,{quantities:tally.data.qty,updatedAt:serverTimestamp()},{merge:true}).catch(err=>console.error('Initial tally:',err));
-      }
-      gotQuantities=true;finishConnection();
-    },err=>{setState('Could not sync the shared tally.','offline');console.error('Tally:',err);});
   }catch(error){setState('Cloud setup is incomplete — this device saves locally for now.','offline');console.error('Firebase setup:',error);}
 }
 function applyProducts(rows){
   const approved=rows.filter(p=>typeof p.name==='string'&&typeof p.kind==='string'&&Number.isFinite(Number(p.price)));
-  if(approved.length){approved.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));tally.products.splice(0,tally.products.length,...approved.map(p=>({badge:'AMUL PRODUCT',color:'green',...p})));const prices={};for(const p of tally.products)prices[p.id]=Number(p.price);tally.data.prices=prices;tally.persist();tally.render();tally.populateProductPicker();}
-  gotProducts=true;finishConnection();
+  if(approved.length){approved.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));tally.products.splice(0,tally.products.length,...approved.map(p=>{const local=tally.defaults.find(item=>item.id===p.id);return {badge:'AMUL PRODUCT',color:'green',...local,...p,quantityMultiple:local?.quantityMultiple||1}}));const prices={};for(const p of tally.products)prices[p.id]=Number(p.price);tally.data.prices=prices;tally.persist();tally.render();tally.populateProductPicker();}
+  setState('Online prices · tally stays local.','online');
 }
-function finishConnection(){if(gotProducts&&gotQuantities){cloudReady=true;window.MILK_TALLY_SYNCED=true;setState('Connected · shared prices are live.','online');tally.renderSummary();}}
 async function refreshPrices(){
   if(!db){toast('Cloud setup is needed to refresh prices.');return;}
   refreshButton.disabled=true;refreshButton.classList.add('loading');setState('Refreshing prices from Firestore…');
@@ -41,10 +31,6 @@ async function refreshPrices(){
   finally{refreshButton.disabled=false;refreshButton.classList.remove('loading');}
 }
 refreshButton?.addEventListener('click',refreshPrices);
-window.addEventListener('milk-quantity-changed',()=>{
-  clearTimeout(qtyTimer);qtyTimer=setTimeout(async()=>{if(!cloudReady||!db)return;try{await setDoc(doc(db,'sharedData','current'),{quantities:tally.data.qty,updatedAt:serverTimestamp()},{merge:true});}catch(error){setState('Could not save online — your tally is kept on this device.','offline');console.error(error);}},450);
-});
-
 document.getElementById('changeForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!db){toast('Cloud setup is needed to send approval requests.');return;}
   const isNew=document.getElementById('changeType').value==='product';

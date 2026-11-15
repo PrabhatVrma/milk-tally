@@ -1,10 +1,11 @@
 # Milk tally — project handoff
 
 **Last updated:** 2026-11-15  
-**Current Android source version:** 1.8 (`versionCode` 9)
+**Current Android source version:** 1.9 (`versionCode` 10)
 **Android package:** `com.milktally.app`
 
 **v1.8 — Reliable support deletion:** Added a native Android confirmation dialog so the WebView delete action can continue to Firestore.
+**v1.9 — Private tallies and pack multiples:** Quantities now stay on each phone; pack buttons and manual entries follow per-product multiples.
 **v1.7 — Owner price controls & support cleanup:** Admin can edit approved prices directly, mark support messages read, then delete them.
 
 **System design:** [Architecture diagram, runtime flows, data model, and security boundaries](docs/system-design.md).
@@ -16,11 +17,11 @@ This document is the developer handoff for the Android app and its Firebase proj
 | Area | Current status |
 |---|---|
 | Android app | Native Android shell with local WebView assets; app content is HTML/CSS/JavaScript. |
-| Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.8 build (`versionCode` 9). The APK is included in this repository; signing credentials remain local. |
+| Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.9 build (`versionCode` 10). The APK is included in this repository; signing credentials remain local. |
 | Cloud project | Firebase project `milk-tally`, Spark plan, no billing account attached. |
 | Source repository | [Public GitHub repository](https://github.com/PrabhatVrma/milk-tally) with source, documentation, scripts, and release APK. |
-| Active app backend | Cloud Firestore is the only active Google backend in the currently deployed app. |
-| Firestore | Standard edition, database `(default)`, region `asia-south1` (Mumbai). Seven product documents plus shared tally and submission collections. |
+| Active app backend | Cloud Firestore is the app's online backend for approved prices and submissions; quantities stay per installation. |
+| Firestore | Standard edition, database `(default)`, region `asia-south1` (Mumbai). Product prices and submission collections; quantities are not stored in Firestore. |
 | Main tally login | None. App users do not need an account. |
 | Owner admin panel | `admin.html` uses Firebase Email/Password Auth with in-memory-only sessions. It can directly update product prices, approve/reject suggestions, and mark support messages read before deleting them. The owner account is verified and login was confirmed working. Published Firestore rules permit the verified owner to set `readAt` and delete only read messages. |
 | Firebase Hosting | `firebase.json` and `public/` are configured for Hosting, but a live Hosting deployment is not confirmed. Spark blocks `.apk` uploads to Firebase Hosting. |
@@ -31,13 +32,13 @@ This document is the developer handoff for the Android app and its Firebase proj
 
 ### Active in the current app
 
-- **Cloud Firestore:** reads approved products, keeps a shared quantity tally, stores price/product suggestions, and stores support messages.
+- **Cloud Firestore:** reads approved products and stores price/product suggestions and support messages. Quantities stay on each installation.
 - **Firebase Web SDK delivery:** the app imports Firebase App and Firestore modules from `https://www.gstatic.com/firebasejs/12.19.0/`. This is Google’s JavaScript SDK CDN, not a separate data backend.
 - **Android system sharing:** the native Android `ACTION_SEND` chooser passes bill text to a user-selected app. It does not send anything until the user selects a recipient and sends it.
 
 ### Not currently used
 
-Firebase Authentication, Firebase Storage, Realtime Database, Cloud Functions, Cloud Run, Cloud Messaging, Firebase Hosting as a live website, and a custom REST API are not used by the currently deployed tally app. The Firebase config contains a `storageBucket` value because Firebase provides it in the web-app config; no Storage SDK is imported and no object is stored there.
+Firebase Storage, Realtime Database, Cloud Functions, Cloud Run, Cloud Messaging, Firebase Hosting as a live website, and a custom REST API are not used by the tally app. Firebase Email/Password Authentication is used only by the owner panel. The Firebase config contains a `storageBucket` value because Firebase provides it in the web-app config; no Storage SDK is imported and no object is stored there.
 
 Firebase Email/Password Authentication is used only by the owner panel. Real phone OTP is not included; Firebase phone SMS requires billing and is charged per SMS. See [Firebase pricing](https://firebase.google.com/pricing) and [Spark plan details](https://firebase.google.com/docs/projects/billing/firebase-pricing-plans).
 
@@ -68,8 +69,9 @@ There is no SQL-style connection string or database username/password. The web S
 
 - Displays Amul products with locally bundled package images and prices from Firestore.
 - Product prices update through Firestore real-time snapshots. **Refresh** also forces a server read.
-- Quantity can be changed with plus/minus buttons or entered directly (0–9999). Zero is displayed blank. While typing, the app updates the total locally and saves the shared tally after editing finishes.
-- The shared total panel includes Reset and Share bill. Reset clears all shared quantities. The footer compacts above the keyboard while a quantity field is being edited.
+- Quantity is stored in local storage per app installation; one phone cannot change another phone's tally. The first v1.9 launch starts a clean local tally and preserves cached prices only.
+- Plus/minus and manual quantity entry use pack multiples: Gold 1 L 6, Gold 500 ml 6, Taaza 6, Slim ’n Trim 5, Dahi 380 g 12, Dahi 85 g 8, and Chaas 6. Manual entries are rounded up to the next pack multiple. Zero is displayed blank.
+- The total panel includes Reset and Share bill. Reset clears only this installation's quantities. The footer compacts above the keyboard while a quantity field is being edited.
 - Share bill builds a dated INR summary and opens the Android text-share chooser. The user chooses WhatsApp and sends the message manually.
 - Suggestion form creates pending price-change or new-product records. The owner panel can approve/reject them or update prices directly.
 - Support form stores the message and optional contact text in Firestore. It does not email anyone.
@@ -77,7 +79,7 @@ There is no SQL-style connection string or database username/password. The web S
 - Android handles the panel's JavaScript delete confirmation with a native dialog so the WebView does not silently cancel the action.
 - No sign-in is required for the normal tally.
 
-The local fallback and seed prices now use ₹82 for Amul Gold 1 L, matching the last confirmed live Firestore value. Firestore remains the source of truth when online. Check the live `products/gold1l` document before reseeding production.
+The local fallback and seed prices use ₹82 for Amul Gold 1 L and ₹9 for Amul Masti Dahi 85 g. Both values were confirmed in live Firestore. Firestore remains the source of truth when online.
 
 ## Firestore collections and schema
 
@@ -98,14 +100,14 @@ range: string display hint (optional)
 
 Seed product IDs: `gold1l`, `gold500`, `taaza`, `slim`, `dahi380`, `dahi85`, `chaas`. The current product seed is `cloud/initial-products.json`; it is a seed/reference file, not an automatic production sync.
 
-### `sharedData/current`
+### Per-installation tally
 
 ```text
-quantities: map<string, number>
-updatedAt: Firestore timestamp
+storage: browser localStorage key `milkTallyLocalV2`
+quantities: map<productId, integer>
 ```
 
-This is a single tally shared by all anonymous clients. Quantities are also cached in browser localStorage under `milkTallyV1` for immediate rendering and offline fallback.
+Each phone stores its own quantity map locally. The app does not read or write `sharedData/current`. The previous shared Firestore document, if present, is legacy data and is not used by v1.9.
 
 ### `changeRequests/{autoId}`
 
@@ -144,9 +146,9 @@ The owner can add `readAt` when marking a message read; deletion is permitted on
 
 ## Security rules and approval status
 
-Current rules allow anyone to read products and the shared tally, update the shared tally, and create bounded suggestions/support messages. Only the verified owner UID can read submissions, approve requests, or change approved products and prices. There is no per-user rate limit, so the shared tally can be overwritten and public submission collections can be spammed.
+Current source rules allow anyone to read products and create bounded suggestions/support messages. Only the verified owner UID can read submissions, approve requests, or change approved products and prices. There is no per-user rate limit, so public submission collections can be spammed. Shared tally access is denied.
 
-The previously published rules allow the verified Firebase Auth UID of the owner account to read support messages and change requests, update request statuses, and write approved product changes. This source update adds owner-only support read markers and deletion of read messages; publish the updated `cloud/firestore.rules` before using those controls. Anonymous access remains limited to the public catalog/shared tally and validated create-only submissions.
+The previously published rules allowed anonymous clients to read and overwrite one shared tally. The updated rules are now published and deny access to that legacy document, including for older installed app versions. Public submissions remain create-only, and the verified owner can manage prices, requests, and read support messages.
 
 ### Owner setup required
 
@@ -168,7 +170,7 @@ Email/Password is enabled, the Firebase owner account exists, and the owner conf
 - Bill sharing is exposed through the `MilkTallyAndroid.shareBill()` JavaScript bridge and Android `Intent.ACTION_SEND` chooser.
 - Package: `com.milktally.app`; label: **Milk tally**.
 - Gradle: wrapper 8.9; Android Gradle plugin; compile SDK 35, min SDK 23, target SDK 35; `androidx.webkit:webkit:1.12.1`.
-- The v1.8 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
+- The v1.9 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
 
 ## Project layout
 

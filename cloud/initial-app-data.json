@@ -5,7 +5,7 @@
     {"id":"taaza","name":"Amul Taaza Blue","kind":"Toned milk · 500 ml","price":28.5,"color":"taza","badge":"TONED MILK","image":"assets/taaza-500.png","range":"Listed ₹27–30"},
     {"id":"slim","name":"Amul Slim ’n Trim","kind":"Milk · 180 ml","price":10,"color":"purple","badge":"SLIM & TRIM","image":"assets/slim-n-trim.jpg"},
     {"id":"dahi380","name":"Amul Masti Dahi","kind":"Curd · 380 g","price":35,"color":"yogurt","badge":"MILD & CREAMY","image":"assets/dahi-380.jpg"},
-    {"id":"dahi85","name":"Amul Masti Dahi","kind":"Curd · 85 g","price":10,"color":"yogurt","badge":"SINGLE SERVE","image":"assets/dahi-85.png"},
+    {"id":"dahi85","name":"Amul Masti Dahi","kind":"Curd · 85 g","price":9,"color":"yogurt","badge":"SINGLE SERVE","image":"assets/dahi-85.png"},
     {"id":"chaas","name":"Amul Chaas","kind":"Buttermilk · 400 ml","price":15,"color":"chaas","badge":"SPICED BUTTERMILK","image":"assets/chaas-pouch.jpg"}
   ],
   "quantities": {"gold1l":0,"gold500":0,"taaza":0,"slim":0,"dahi380":0,"dahi85":0,"chaas":0}

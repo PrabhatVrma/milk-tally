@@ -42,19 +42,7 @@ service cloud.firestore {
       // Product writes are restricted to the verified owner account.
       allow create, update, delete: if isOwner();
     }
-    match /sharedData/current {
-      allow read: if true;
-      // No account is required; visitors can change only the shared tally.
-      allow create: if request.resource.data.keys().hasOnly(['quantities','updatedAt'])
-        && request.resource.data.quantities is map
-        && request.resource.data.quantities.size() <= 100
-        && request.resource.data.updatedAt == request.time;
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantities','updatedAt'])
-        && request.resource.data.quantities is map
-        && request.resource.data.quantities.size() <= 100
-        && request.resource.data.updatedAt == request.time;
-      allow delete: if false;
-    }
+    // No shared quantity document is exposed. Each app installation keeps its tally locally.
     match /changeRequests/{requestId} {
       allow create: if validPriceRequest() || validNewProductRequest();
       allow read, update: if isOwner();
