@@ -1,6 +1,6 @@
 # Milk tally — system design
 
-**Architecture revision:** v1.9
+**Architecture revision:** v1.10
 **Android package:** `com.milktally.app`  
 **Backend plan:** Firebase Spark
 
@@ -45,7 +45,7 @@ flowchart LR
 
     subgraph Delivery["Build and distribution"]
         Repo["GitHub repository<br/>Source · docs · scripts"]:::delivery
-        APK["Release APK<br/>v1.9 · signed"]:::delivery
+        APK["Release APK<br/>v1.10 · signed"]:::delivery
         Phone["Install on Android"]:::delivery
         Repo --> APK --> Phone
     end
@@ -76,7 +76,7 @@ The Firebase Web SDK connects from the app directly to Firestore. There is no cu
 
 | Flow | What happens |
 |---|---|
-| Tally | Quantities are stored in local storage on each app installation. Pack controls and manual entries use the product's order multiple. No quantity data is sent to Firestore. |
+| Tally | Quantities are stored in local storage on each app installation. Plus/minus controls use the product's pack step, while manual entry accepts any whole number. No quantity data is sent to Firestore. |
 | Price refresh | Firestore price snapshots update the catalog in the app. The Refresh action can request the latest server values. |
 | Suggestions | Anyone can submit a bounded price or new-product suggestion. The owner reviews it in the admin panel and approves or rejects it. |
 | Direct price edit | The verified owner saves a price from the admin panel to `products/{productId}`; Firestore rules reject that write from anonymous users. |
@@ -97,7 +97,7 @@ Stored only in the app installation's local storage (`milkTallyLocalV2`):
 quantities: map<productId, integer>
 ```
 
-Each install has an independent quantity map. The legacy Firestore `sharedData/current` document is ignored by the current app and denied by current rules.
+Each install has an independent quantity map. The legacy Firestore `sharedData/current` document is ignored by the current app and denied by current rules. Manual quantities can differ from the step size, and plus/minus changes the displayed field by that step.
 
 Current pack multiples: Gold 1 L 6, Gold 500 ml 6, Taaza 500 ml 6, Slim ’n Trim 180 ml 5, Masti Dahi 380 g 12, Masti Dahi 85 g 8, and Chaas 400 ml 6. New catalog items default to a multiple of 1 until added to the local app defaults.
 
@@ -122,6 +122,6 @@ Anonymous users can create a message with optional contact text and server `crea
 
 - Android UI assets are maintained at the repository root and copied to `public/` and the Android WebView bundle by `cloud/sync-app.ps1`.
 - `cloud/build-release.ps1` builds the release APK with the local JDK, Android SDK, and keystore. Signing material stays outside the repository.
-- `outputs/Milk-tally.apk` is the installable v1.9 release artifact.
+- `outputs/Milk-tally.apk` is the installable v1.10 release artifact.
 - Firebase Hosting configuration exists in `firebase.json`; a live Hosting deployment is separate from the Android APK and is not assumed here.
 - Source control and release artifact are in the GitHub repository. GitHub is not used as a runtime dependency by the app.

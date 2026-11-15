@@ -7,7 +7,7 @@ Prepared for the Uptodown Developers Console. Do not publish until a production-
 - App name: Milk tally
 - Platform: Android
 - Package: com.milktally.app
-- Current app version: 1.9 (versionCode 10)
+- Current app version: 1.10 (versionCode 11)
 - Minimum Android version: Android 6.0 / API 23
 - Category suggestion: Tools
 - Language: English
@@ -23,16 +23,22 @@ Fast milk and dairy tally with live prices and bill sharing.
 
 ## Full description
 
-Milk tally makes it easy to calculate the total for everyday milk and dairy purchases. Choose from Amul milk, curd, and buttermilk products, then tap the plus and minus buttons or enter quantities directly. Pack quantities follow the displayed product multiples, and each phone keeps its own tally. The rupee total updates as you go. Refresh prices from the online catalog, reset your tally, and share a formatted bill through your phone's share menu, including WhatsApp. An internet connection is needed for live prices; your quantities remain saved on your device. No account is needed to use the main tally. Milk tally is an independent utility and is not affiliated with or endorsed by Amul.
+Milk tally makes it easy to calculate the total for everyday milk and dairy purchases. Choose from Amul milk, curd, and buttermilk products, then tap the plus and minus buttons to change the count by the displayed pack step, or enter any whole quantity manually. Button changes are reflected in the quantity field, and each phone keeps its own tally. The rupee total updates as you go. Refresh prices from the online catalog, reset your tally, and share a formatted bill through your phone's share menu, including WhatsApp. An internet connection is needed for live prices; your quantities remain saved on your device. No account is needed to use the main tally. Milk tally is an independent utility and is not affiliated with or endorsed by Amul.
 
 ## Data disclosure
 
-The app shares product quantities and online price data through Firebase Firestore. If users submit a suggestion or support message, the message and any optional contact detail they enter are stored for the app owner. No sign-in is required for the main tally.
+The app retrieves product prices from Firebase Firestore. Quantities remain on the user's device. If users submit a suggestion or support message, the message and any optional contact detail they enter are stored for the app owner. No sign-in is required for the main tally.
+
+## Version 1.10 release notes
+
+- Update the visible quantity field when plus or minus is tapped.
+- Allow manual quantities that differ from the product's button step.
+- Keep each phone's tally private to that installation.
 
 ## Version 1.9 release notes
 
 - Keep each phone's milk quantities private to that installation.
-- Add and remove products in the displayed pack multiples; manual quantities follow the same multiples.
+- Add and remove products using the displayed pack steps.
 - Continue receiving live product prices from Firebase.
 
 ## Version 1.8 release notes

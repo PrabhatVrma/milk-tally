@@ -19,4 +19,4 @@ Requirements: JDK 17+ and Android SDK Platform 35 / Build Tools 35.0.0.
 .\gradlew.bat assembleDebug
 ```
 
-The included v1.9 APK is release-signed and non-debuggable. Build updates with `../cloud/build-release.ps1`; the keystore is stored outside the repository under the current Windows user profile.
+The included v1.10 APK is release-signed and non-debuggable. Build updates with `../cloud/build-release.ps1`; the keystore is stored outside the repository under the current Windows user profile.
