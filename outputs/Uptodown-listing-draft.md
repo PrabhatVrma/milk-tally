@@ -7,7 +7,7 @@ Prepared for the Uptodown Developers Console. Do not publish until a production-
 - App name: Milk tally
 - Platform: Android
 - Package: com.milktally.app
-- Current app version: 1.10 (versionCode 11)
+- Current app version: 1.11 (versionCode 12)
 - Minimum Android version: Android 6.0 / API 23
 - Category suggestion: Tools
 - Language: English
@@ -23,11 +23,17 @@ Fast milk and dairy tally with live prices and bill sharing.
 
 ## Full description
 
-Milk tally makes it easy to calculate the total for everyday milk and dairy purchases. Choose from Amul milk, curd, and buttermilk products, then tap the plus and minus buttons to change the count by the displayed pack step, or enter any whole quantity manually. Button changes are reflected in the quantity field, and each phone keeps its own tally. The rupee total updates as you go. Refresh prices from the online catalog, reset your tally, and share a formatted bill through your phone's share menu, including WhatsApp. An internet connection is needed for live prices; your quantities remain saved on your device. No account is needed to use the main tally. Milk tally is an independent utility and is not affiliated with or endorsed by Amul.
+Milk tally makes it easy to calculate the total for everyday milk and dairy purchases. Choose from Amul milk, curd, and buttermilk products, then tap the plus and minus buttons to change the count by the displayed pack step, or enter any whole quantity manually. Button changes are reflected in the quantity field, and each phone keeps its own tally. Prices retain decimal precision, including values such as ₹73.833, and totals and shared bills use those exact decimal prices. Refresh prices from the online catalog, reset your tally, and share a formatted bill through your phone's share menu, including WhatsApp. An internet connection is needed for live prices; your quantities remain saved on your device. No account is needed to use the main tally. Milk tally is an independent utility and is not affiliated with or endorsed by Amul.
 
 ## Data disclosure
 
 The app retrieves product prices from Firebase Firestore. Quantities remain on the user's device. If users submit a suggestion or support message, the message and any optional contact detail they enter are stored for the app owner. No sign-in is required for the main tally.
+
+## Version 1.11 release notes
+
+- Preserve decimal price digits instead of rounding to two decimal places.
+- Accept arbitrary decimal values in price suggestions and admin price editing.
+- Calculate bill line totals and grand totals using decimal arithmetic.
 
 ## Version 1.10 release notes
 

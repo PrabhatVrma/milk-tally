@@ -22,7 +22,7 @@ function showToast(message){toastEl.textContent=message;toastEl.hidden=false;cle
 function showPageError(message){pageError.textContent=message;pageError.hidden=false}
 function clearPageError(){pageError.textContent='';pageError.hidden=true}
 function dateLabel(value){try{return value?.toDate?value.toDate().toLocaleString('en-IN'):''}catch{return ''}}
-function money(value){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(Number(value)||0)}
+function money(value){const number=Number(value);if(!Number.isFinite(number))return '₹0.00';let[mantissa,exponentText]=number.toString().toLowerCase().split('e');const exponent=Number(exponentText||0),negative=mantissa.startsWith('-');if(negative)mantissa=mantissa.slice(1);let[whole='0',fraction='']=mantissa.split('.');const digits=`${whole}${fraction}`.replace(/^0+(?=\d)/,'')||'0';let coefficient=BigInt(digits)*(negative?-1n:1n),scale=fraction.length-exponent;if(scale<0){coefficient*=10n**BigInt(-scale);scale=0}const sign=coefficient<0n?'-':'',absolute=coefficient<0n?-coefficient:coefficient,divisor=10n**BigInt(scale),integer=absolute/divisor,decimal=(scale?(absolute%divisor).toString().padStart(scale,'0').replace(/0+$/,''):'').padEnd(2,'0');return `₹${sign}${new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(integer)}.${decimal}`}
 function emptyList(root,message){root.innerHTML=`<div class="empty">${escapeHtml(message)}</div>`}
 
 if(!config||!config.apiKey||String(config.apiKey).startsWith('PASTE_')){
@@ -109,7 +109,7 @@ async function loadInbox(){
 }
 function renderProducts(products){
   if(!products.length){emptyList(productsRoot,'No products are available.');return;}
-  productsRoot.innerHTML=products.map((product,index)=>`<article class="item"><div class="itemtop"><div><h3>${escapeHtml(product.name||product.id)}</h3><div class="meta">${escapeHtml(product.kind||'')} · ID ${escapeHtml(product.id)}</div></div><span class="pill">${escapeHtml(money(product.price))}</span></div><div class="price-edit"><label for="product-price-${index}">Price (₹)</label><input id="product-price-${index}" data-price type="number" min="0" max="100000" step="0.01" inputmode="decimal" value="${escapeHtml(product.price??'')}"><button class="primary" type="button" data-product-id="${escapeHtml(product.id)}">Save price</button></div></article>`).join('');
+  productsRoot.innerHTML=products.map((product,index)=>`<article class="item"><div class="itemtop"><div><h3>${escapeHtml(product.name||product.id)}</h3><div class="meta">${escapeHtml(product.kind||'')} · ID ${escapeHtml(product.id)}</div></div><span class="pill">${escapeHtml(money(product.price))}</span></div><div class="price-edit"><label for="product-price-${index}">Price (₹)</label><input id="product-price-${index}" data-price type="number" min="0" max="100000" step="any" inputmode="decimal" value="${escapeHtml(product.price??'')}"><button class="primary" type="button" data-product-id="${escapeHtml(product.id)}">Save price</button></div></article>`).join('');
 }
 function renderRequests(requests,products){
   if(!requests.length){emptyList(requestsRoot,'No pending suggestions.');return;}

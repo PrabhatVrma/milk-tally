@@ -1,6 +1,6 @@
 # Milk tally — system design
 
-**Architecture revision:** v1.10
+**Architecture revision:** v1.11
 **Android package:** `com.milktally.app`  
 **Backend plan:** Firebase Spark
 
@@ -45,7 +45,7 @@ flowchart LR
 
     subgraph Delivery["Build and distribution"]
         Repo["GitHub repository<br/>Source · docs · scripts"]:::delivery
-        APK["Release APK<br/>v1.10 · signed"]:::delivery
+        APK["Release APK<br/>v1.11 · signed"]:::delivery
         Phone["Install on Android"]:::delivery
         Repo --> APK --> Phone
     end
@@ -78,6 +78,7 @@ The Firebase Web SDK connects from the app directly to Firestore. There is no cu
 |---|---|
 | Tally | Quantities are stored in local storage on each app installation. Plus/minus controls use the product's pack step, while manual entry accepts any whole number. No quantity data is sent to Firestore. |
 | Price refresh | Firestore price snapshots update the catalog in the app. The Refresh action can request the latest server values. |
+| Price precision | Numeric price values retain their available decimal digits for display and suggestions. Line totals and the overall total multiply and add decimal coefficients without currency rounding. |
 | Suggestions | Anyone can submit a bounded price or new-product suggestion. The owner reviews it in the admin panel and approves or rejects it. |
 | Direct price edit | The verified owner saves a price from the admin panel to `products/{productId}`; Firestore rules reject that write from anonymous users. |
 | Support | Anyone can submit a support message. The owner reads it, marks it read, then can delete it. Rules permit deletion only for the verified owner when `readAt` is a timestamp. |
@@ -122,6 +123,6 @@ Anonymous users can create a message with optional contact text and server `crea
 
 - Android UI assets are maintained at the repository root and copied to `public/` and the Android WebView bundle by `cloud/sync-app.ps1`.
 - `cloud/build-release.ps1` builds the release APK with the local JDK, Android SDK, and keystore. Signing material stays outside the repository.
-- `outputs/Milk-tally.apk` is the installable v1.10 release artifact.
+- `outputs/Milk-tally.apk` is the installable v1.11 release artifact.
 - Firebase Hosting configuration exists in `firebase.json`; a live Hosting deployment is separate from the Android APK and is not assumed here.
 - Source control and release artifact are in the GitHub repository. GitHub is not used as a runtime dependency by the app.

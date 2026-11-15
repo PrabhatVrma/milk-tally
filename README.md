@@ -1,12 +1,13 @@
 # Milk tally — project handoff
 
 **Last updated:** 2026-11-15  
-**Current Android source version:** 1.10 (`versionCode` 11)
+**Current Android source version:** 1.11 (`versionCode` 12)
 **Android package:** `com.milktally.app`
 
 **v1.8 — Reliable support deletion:** Added a native Android confirmation dialog so the WebView delete action can continue to Firestore.
 **v1.9 — Private tallies and pack multiples:** Quantities now stay on each phone; pack buttons and manual entries follow per-product multiples.
 **v1.10 — Flexible manual quantities:** Plus/minus buttons update the quantity field by pack step; manual entry accepts exceptions such as 8 or 9.
+**v1.11 — Exact decimal pricing:** Keep all supported decimal price digits in the app, suggestions, admin panel, totals, and shared bills.
 **v1.7 — Owner price controls & support cleanup:** Admin can edit approved prices directly, mark support messages read, then delete them.
 
 **System design:** [Architecture diagram, runtime flows, data model, and security boundaries](docs/system-design.md).
@@ -18,7 +19,7 @@ This document is the developer handoff for the Android app and its Firebase proj
 | Area | Current status |
 |---|---|
 | Android app | Native Android shell with local WebView assets; app content is HTML/CSS/JavaScript. |
-| Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.10 build (`versionCode` 11). The APK is included in this repository; signing credentials remain local. |
+| Latest APK artifact | `outputs/Milk-tally.apk` is the release-signed v1.11 build (`versionCode` 12). The APK is included in this repository; signing credentials remain local. |
 | Cloud project | Firebase project `milk-tally`, Spark plan, no billing account attached. |
 | Source repository | [Public GitHub repository](https://github.com/PrabhatVrma/milk-tally) with source, documentation, scripts, and release APK. |
 | Active app backend | Cloud Firestore is the app's online backend for approved prices and submissions; quantities stay per installation. |
@@ -70,6 +71,7 @@ There is no SQL-style connection string or database username/password. The web S
 
 - Displays Amul products with locally bundled package images and prices from Firestore.
 - Product prices update through Firestore real-time snapshots. **Refresh** also forces a server read.
+- Decimal prices such as ₹73.833 display without two-place rounding. Suggestions allow arbitrary decimal steps, and bill line totals and grand totals use decimal arithmetic to preserve the displayed price precision.
 - Quantity is stored in local storage per app installation; one phone cannot change another phone's tally. The first v1.9 launch starts a clean local tally and preserves cached prices only.
 - Plus/minus buttons change quantities by pack steps: Gold 1 L 6, Gold 500 ml 6, Taaza 6, Slim ’n Trim 5, Dahi 380 g 12, Dahi 85 g 8, and Chaas 6. Manual entry accepts any non-negative whole number without requiring a pack multiple, including exceptions such as 8 or 9. Button changes also appear in the quantity field. Zero is displayed blank.
 - The total panel includes Reset and Share bill. Reset clears only this installation's quantities. The footer compacts above the keyboard while a quantity field is being edited.
@@ -171,7 +173,7 @@ Email/Password is enabled, the Firebase owner account exists, and the owner conf
 - Bill sharing is exposed through the `MilkTallyAndroid.shareBill()` JavaScript bridge and Android `Intent.ACTION_SEND` chooser.
 - Package: `com.milktally.app`; label: **Milk tally**.
 - Gradle: wrapper 8.9; Android Gradle plugin; compile SDK 35, min SDK 23, target SDK 35; `androidx.webkit:webkit:1.12.1`.
-- The v1.10 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
+- The v1.11 APK is release-signed and has `debuggable=false`. The private keystore and DPAPI-protected password are outside the repo under `%LOCALAPPDATA%\MilkTally\release-signing\`. `cloud/build-release.ps1` uses them for repeatable release builds. Use `cloud/export-release-key-password.ps1` locally if you need to back up the password to your own password manager before moving development to another Windows account/device.
 
 ## Project layout
 
