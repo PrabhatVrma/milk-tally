@@ -20,7 +20,7 @@ if(!config||!config.apiKey||String(config.apiKey).startsWith('PASTE_')){
 }
 function applyProducts(rows){
   const approved=rows.filter(p=>typeof p.name==='string'&&typeof p.kind==='string'&&Number.isFinite(Number(p.price)));
-  if(approved.length){approved.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));tally.products.splice(0,tally.products.length,...approved.map(p=>{const local=tally.defaults.find(item=>item.id===p.id);return {badge:'AMUL PRODUCT',color:'green',...local,...p,quantityMultiple:local?.quantityMultiple||1}}));const prices={};for(const p of tally.products)prices[p.id]=Number(p.price);tally.data.prices=prices;tally.persist();tally.render();tally.populateProductPicker();}
+  if(approved.length){approved.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));tally.products.splice(0,tally.products.length,...approved.map(p=>{const local=tally.defaults.find(item=>item.id===p.id),remoteMultiple=Number(p.quantityMultiple),fallbackMultiple=Number(local?.quantityMultiple)||1;return {badge:'AMUL PRODUCT',color:'green',...local,...p,quantityMultiple:Number.isSafeInteger(remoteMultiple)&&remoteMultiple>0?remoteMultiple:fallbackMultiple}}));const prices={};for(const p of tally.products)prices[p.id]=Number(p.price);tally.data.prices=prices;tally.persist();tally.render();tally.populateProductPicker();}
   setState('Online prices · tally stays local.','online');
 }
 async function refreshPrices(){

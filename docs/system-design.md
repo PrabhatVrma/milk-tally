@@ -1,6 +1,6 @@
 # Milk tally — system design
 
-**Architecture revision:** v1.11
+**Architecture revision:** v1.12
 **Android package:** `com.milktally.app`  
 **Backend plan:** Firebase Spark
 
@@ -45,7 +45,7 @@ flowchart LR
 
     subgraph Delivery["Build and distribution"]
         Repo["GitHub repository<br/>Source · docs · scripts"]:::delivery
-        APK["Release APK<br/>v1.11 · signed"]:::delivery
+        APK["Release APK<br/>v1.12 · signed"]:::delivery
         Phone["Install on Android"]:::delivery
         Repo --> APK --> Phone
     end
@@ -81,6 +81,7 @@ The Firebase Web SDK connects from the app directly to Firestore. There is no cu
 | Price precision | Numeric price values retain their available decimal digits for display and suggestions. Line totals and the overall total multiply and add decimal coefficients without currency rounding. |
 | Suggestions | Anyone can submit a bounded price or new-product suggestion. The owner reviews it in the admin panel and approves or rejects it. |
 | Direct price edit | The verified owner saves a price from the admin panel to `products/{productId}`; Firestore rules reject that write from anonymous users. |
+| Minimum quantity edit | The verified owner saves `quantityMultiple` on the product record. Live Firestore updates replace the app's step size; older records fall back to the bundled default. |
 | Support | Anyone can submit a support message. The owner reads it, marks it read, then can delete it. Rules permit deletion only for the verified owner when `readAt` is a timestamp. |
 | Bill sharing | JavaScript sends formatted bill text through the native bridge. Android opens the system chooser; the user chooses WhatsApp or another app and sends it. |
 
@@ -88,7 +89,7 @@ The Firebase Web SDK connects from the app directly to Firestore. There is no cu
 
 ### `products/{productId}`
 
-Public catalog with `name`, `kind`, `price`, and optional display fields such as `order`, `image`, `badge`, `color`, and `range`.
+Public catalog with `name`, `kind`, `price`, owner-editable `quantityMultiple`, and optional display fields such as `order`, `image`, `badge`, `color`, and `range`.
 
 ### Per-installation tally
 
@@ -100,7 +101,7 @@ quantities: map<productId, integer>
 
 Each install has an independent quantity map. The legacy Firestore `sharedData/current` document is ignored by the current app and denied by current rules. Manual quantities can differ from the step size, and plus/minus changes the displayed field by that step.
 
-Current pack multiples: Gold 1 L 6, Gold 500 ml 6, Taaza 500 ml 6, Slim ’n Trim 180 ml 5, Masti Dahi 380 g 12, Masti Dahi 85 g 8, and Chaas 400 ml 6. New catalog items default to a multiple of 1 until added to the local app defaults.
+Default minimum quantities / button steps: Gold 1 L 6, Gold 500 ml 6, Taaza 500 ml 6, Slim ’n Trim 180 ml 5, Masti Dahi 380 g 12, Masti Dahi 85 g 8, and Chaas 400 ml 6. The owner can change each product's value in the admin panel; the app applies the updated value from Firestore. Manual quantity entry remains flexible. New catalog items default to 1 until configured.
 
 ### `changeRequests/{id}`
 
@@ -123,6 +124,6 @@ Anonymous users can create a message with optional contact text and server `crea
 
 - Android UI assets are maintained at the repository root and copied to `public/` and the Android WebView bundle by `cloud/sync-app.ps1`.
 - `cloud/build-release.ps1` builds the release APK with the local JDK, Android SDK, and keystore. Signing material stays outside the repository.
-- `outputs/Milk-tally.apk` is the installable v1.11 release artifact.
+- `outputs/Milk-tally.apk` is the installable v1.12 release artifact.
 - Firebase Hosting configuration exists in `firebase.json`; a live Hosting deployment is separate from the Android APK and is not assumed here.
 - Source control and release artifact are in the GitHub repository. GitHub is not used as a runtime dependency by the app.

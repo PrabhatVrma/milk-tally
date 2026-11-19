@@ -15,6 +15,7 @@ const productsRoot=document.getElementById('productList');
 const supportRoot=document.getElementById('supportList');
 const toastEl=document.getElementById('toast');
 let auth=null,db=null,toastTimer=0,authReady=Promise.resolve();
+const defaultQuantityMultiples={gold1l:6,gold500:6,taaza:6,slim:5,dahi380:12,dahi85:8,chaas:6};
 
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function showLogin(message=''){loginView.hidden=false;adminView.hidden=true;loginNotice.textContent=message;}
@@ -67,6 +68,16 @@ requestsRoot.addEventListener('click',async event=>{
   catch(error){showPageError(`Could not review suggestion: ${error.message}`);button.disabled=false;}
 });
 productsRoot.addEventListener('click',async event=>{
+  const quantityButton=event.target.closest('button[data-quantity-product-id]');
+  if(quantityButton){
+    const card=quantityButton.closest('.item'),input=card?.querySelector('input[data-quantity-multiple]');
+    const rawQuantity=input?.value.trim(),quantity=Number(rawQuantity);
+    if(!rawQuantity||!Number.isSafeInteger(quantity)||quantity<1){showPageError('Enter a whole-number minimum quantity of 1 or more.');input?.focus();return;}
+    quantityButton.disabled=true;clearPageError();
+    try{await updateDoc(doc(db,'products',quantityButton.dataset.quantityProductId),{quantityMultiple:quantity});showToast('Minimum quantity updated.');await loadInbox();}
+    catch(error){showPageError(`Could not update minimum quantity: ${error.message}`);quantityButton.disabled=false;}
+    return;
+  }
   const button=event.target.closest('button[data-product-id]');if(!button)return;
   const card=button.closest('.item'),input=card?.querySelector('input[data-price]');
   const rawPrice=input?.value.trim(),price=Number(rawPrice);
@@ -109,7 +120,7 @@ async function loadInbox(){
 }
 function renderProducts(products){
   if(!products.length){emptyList(productsRoot,'No products are available.');return;}
-  productsRoot.innerHTML=products.map((product,index)=>`<article class="item"><div class="itemtop"><div><h3>${escapeHtml(product.name||product.id)}</h3><div class="meta">${escapeHtml(product.kind||'')} · ID ${escapeHtml(product.id)}</div></div><span class="pill">${escapeHtml(money(product.price))}</span></div><div class="price-edit"><label for="product-price-${index}">Price (₹)</label><input id="product-price-${index}" data-price type="number" min="0" max="100000" step="any" inputmode="decimal" value="${escapeHtml(product.price??'')}"><button class="primary" type="button" data-product-id="${escapeHtml(product.id)}">Save price</button></div></article>`).join('');
+  productsRoot.innerHTML=products.map((product,index)=>{const fallback=defaultQuantityMultiples[product.id]||1,configured=Number(product.quantityMultiple),quantity=Number.isSafeInteger(configured)&&configured>0?configured:fallback;return `<article class="item"><div class="itemtop"><div><h3>${escapeHtml(product.name||product.id)}</h3><div class="meta">${escapeHtml(product.kind||'')} · ID ${escapeHtml(product.id)}</div></div><span class="pill">${escapeHtml(money(product.price))}</span></div><div class="price-edit"><label for="product-price-${index}">Price (₹)</label><input id="product-price-${index}" data-price type="number" min="0" max="100000" step="any" inputmode="decimal" value="${escapeHtml(product.price??'')}"><button class="primary" type="button" data-product-id="${escapeHtml(product.id)}">Save price</button></div><div class="price-edit quantity-edit"><label for="product-quantity-${index}">Minimum quantity · each +/− tap</label><input id="product-quantity-${index}" data-quantity-multiple type="number" min="1" step="1" inputmode="numeric" value="${quantity}"><button class="secondary" type="button" data-quantity-product-id="${escapeHtml(product.id)}">Save minimum</button></div></article>`}).join('');
 }
 function renderRequests(requests,products){
   if(!requests.length){emptyList(requestsRoot,'No pending suggestions.');return;}

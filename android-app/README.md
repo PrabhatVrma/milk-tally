@@ -19,4 +19,4 @@ Requirements: JDK 17+ and Android SDK Platform 35 / Build Tools 35.0.0.
 .\gradlew.bat assembleDebug
 ```
 
-The included v1.11 APK is release-signed and non-debuggable. Prices preserve their decimal digits through totals and bills. Build updates with `../cloud/build-release.ps1`; the keystore is stored outside the repository under the current Windows user profile.
+The included v1.12 APK is release-signed and non-debuggable. Prices preserve their decimal digits through totals and bills. The owner can set each product's minimum order quantity / plus-minus step from the admin panel. Build updates with `../cloud/build-release.ps1`; the keystore is stored outside the repository under the current Windows user profile.
